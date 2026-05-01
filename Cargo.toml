@@ -1,12 +1,12 @@
 [package]
-name = "chromecast2mqtt"
+name = "mqttcasters"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "A lightweight Chromecast MQTT connector"
 license = "MIT"
 
 [[bin]]
-name = "chromecast2mqtt"
+name = "mqttcasters"
 path = "src/main.rs"
 
 [dependencies]
