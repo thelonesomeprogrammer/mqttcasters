@@ -1,4 +1,4 @@
-# chromecast2mqtt
+# MQTT Casters
 
 A lightweight Chromecast → MQTT connector written in Rust.
 
