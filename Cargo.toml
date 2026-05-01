@@ -1,0 +1,21 @@
+[package]
+name = "chromecast2mqtt"
+version = "0.1.0"
+edition = "2021"
+description = "A lightweight Chromecast MQTT connector"
+license = "MIT"
+
+[[bin]]
+name = "chromecast2mqtt"
+path = "src/main.rs"
+
+[dependencies]
+rust_cast = "0.21"
+rumqttc = "0.25"
+mdns-sd = "0.19"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1"
