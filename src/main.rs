@@ -1,9 +1,4 @@
-mod bridge;
-mod config;
-mod device;
-mod discovery;
-mod types;
-
+use mqttcasters::{bridge, config};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -18,8 +13,8 @@ async fn main() -> anyhow::Result<()> {
     let cfg = config::Config::from_env()?;
 
     info!(
-        "chromecast2mqtt starting  |  broker={}:{}  base_topic={}  discovery={}s",
-        cfg.mqtt_host, cfg.mqtt_port, cfg.base_topic, cfg.discovery_timeout_secs
+        "mqttcasters starting  |  broker={}  base_topic={}  discovery={}s",
+        cfg.mqtt_url, cfg.base_topic, cfg.discovery_timeout_secs
     );
 
     bridge::run(cfg).await

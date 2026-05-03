@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 /// Current state of a Chromecast device, serialised as JSON and published to MQTT.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -15,24 +16,25 @@ pub struct DeviceState {
     /// Human-readable application name (e.g. `"YouTube"`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub app_name: Option<String>,
-    /// Media player state: `"PLAYING"`, `"PAUSED"`, `"BUFFERING"`, or `"IDLE"`.
+    /// Media player state: `"PLAYING"`, `"PAUSED"`, `"BUFFERING"`, `"LOADING"`, or `"IDLE"`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub player_state: Option<String>,
-    /// Media title (song / video title).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub title: Option<String>,
-    /// Media artist.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub artist: Option<String>,
-    /// Media album.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub album: Option<String>,
+    pub player_state: Option<PlayerStateLocal>,
     /// Current playback position in seconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub current_time: Option<f32>,
     /// Total media duration in seconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum PlayerStateLocal {
+    Playing,
+    Paused,
+    Buffering,
+    Loading,
+    Idle,
 }
 
 impl Default for DeviceState {
@@ -44,9 +46,6 @@ impl Default for DeviceState {
             app_id: None,
             app_name: None,
             player_state: None,
-            title: None,
-            artist: None,
-            album: None,
             current_time: None,
             duration: None,
         }
@@ -64,17 +63,51 @@ pub struct StateUpdate {
     pub state: DeviceState,
 }
 
+/// Events emitted by the discovery task.
+#[derive(Debug, Clone)]
+pub enum DiscoveryEvent {
+    /// A device was found or its details (like IP) were updated.
+    Found(DiscoveredDevice),
+    /// A device was removed from the network.
+    Removed(String),
+}
+
 /// Commands that can be sent to a device thread via MQTT.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Error)]
 #[serde(tag = "command", rename_all = "snake_case")]
 pub enum DeviceCommand {
+    #[error("play")]
     Play,
+    #[error("pause")]
     Pause,
+    #[error("stop")]
     Stop,
     /// Set volume; expects a `"value"` field in `[0, 100]` (integer percentage).
-    SetVolume { value: u8 },
+    #[error("set_volume({value})")]
+    SetVolume {
+        value: u8,
+    },
     /// Mute or unmute; expects a `"muted"` boolean field.
-    SetMuted { muted: bool },
+    #[error("set_muted({muted})")]
+    SetMuted {
+        muted: bool,
+    },
+    /// Load a media URL.
+    #[error("load({url})")]
+    Load {
+        url: String,
+        #[serde(default)]
+        title: Option<String>,
+        #[serde(default)]
+        content_type: Option<String>,
+    },
+    /// Update the device's connection address (internal use).
+    #[error("update_address({address}:{port})")]
+    #[serde(skip)]
+    UpdateAddress {
+        address: String,
+        port: u16,
+    },
 }
 
 /// A discovered Chromecast device.

@@ -24,7 +24,7 @@ MQTT commands.
 ### State (published, retained)
 
 ```
-{BASE_TOPIC}/{device_name}/state
+{MQTT_BASE_TOPIC}/{device_name}/state
 ```
 
 Example payload:
@@ -51,7 +51,7 @@ characters replaced by underscores (e.g. `"Living Room TV"` → `living_room_tv`
 ### Commands (subscribe)
 
 ```
-{BASE_TOPIC}/{device_name}/set
+{MQTT_BASE_TOPIC}/{device_name}/set
 ```
 
 Publish a JSON object with a `"command"` field:
@@ -70,18 +70,19 @@ Publish a JSON object with a `"command"` field:
 
 All configuration is through environment variables:
 
-| Variable            | Default           | Description                                   |
-|---------------------|-------------------|-----------------------------------------------|
-| `MQTT_HOST`         | `localhost`       | MQTT broker hostname or IP                    |
-| `MQTT_PORT`         | `1883`            | MQTT broker port                              |
-| `MQTT_USERNAME`     | –                 | Optional MQTT username                        |
-| `MQTT_PASSWORD`     | –                 | Optional MQTT password                        |
-| `BASE_TOPIC`        | `chromecast2mqtt` | MQTT topic prefix                             |
-| `DISCOVERY_TIMEOUT` | `10`              | mDNS discovery window in seconds at startup   |
-| `RECONNECT_DELAY`   | `15`              | Seconds between reconnection attempts         |
-| `RUST_LOG`          | `info`            | Log level (`trace`, `debug`, `info`, `warn`)  |
+| Variable            | Default                     | Description                                   |
+|---------------------|-----------------------------|-----------------------------------------------|
+| `MQTT_URL`          | `mqtt://localhost:1883`     | MQTT broker URL                               |
+| `MQTT_BASE_TOPIC`   | `mqttcasters`               | MQTT topic prefix                             |
+| `DISCOVERY_TIMEOUT` | `10`                        | mDNS discovery window in seconds at startup   |
+| `RECONNECT_DELAY`   | `15`                        | Seconds between reconnection attempts         |
+| `RUST_LOG`          | `info`                      | Log level (`trace`, `debug`, `info`, `warn`)  |
 
 ---
+
+## User Guide
+
+For detailed instructions on running a local MQTT broker with Docker and using CLI tools to control your devices, see the [User Guide](USERGUIDE.md).
 
 ## Building & Running
 
@@ -90,7 +91,7 @@ All configuration is through environment variables:
 cargo build --release
 
 # Run
-MQTT_HOST=192.168.1.10 ./target/release/chromecast2mqtt
+MQTT_URL=mqtt://192.168.1.10:1883 ./target/release/mqttcasters
 ```
 
 ### Docker (example)

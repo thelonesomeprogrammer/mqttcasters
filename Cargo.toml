@@ -5,13 +5,17 @@ edition = "2024"
 description = "A lightweight Chromecast MQTT connector"
 license = "MIT"
 
+[lib]
+name = "mqttcasters"
+path = "src/lib.rs"
+
 [[bin]]
 name = "mqttcasters"
 path = "src/main.rs"
 
 [dependencies]
-rust_cast = "0.21"
-rumqttc = "0.25"
+cast-sender = "0.3.0"
+rumqttc = { version = "0.25", features = ["url"] }
 mdns-sd = "0.19"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
@@ -19,3 +23,5 @@ serde_json = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1"
+clap = { version = "4.6.1", features = ["derive", "env"] }
+thiserror = "2"
