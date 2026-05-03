@@ -1,0 +1,10 @@
+steps:
+  publish:
+    image: woodpeckerci/plugin-docker-buildx
+    settings:
+      repo: gitea.marrinus.trade/thelonesomeprogrammer/mqttcasters
+      dockerfile: Dockerfile
+      platforms: linux/amd64
+      registry: gitea.marrinus.trade
+      password: $${gittea_pass}
+      username: $${gittea_user}
