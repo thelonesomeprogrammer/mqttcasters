@@ -6,5 +6,7 @@ steps:
       dockerfile: Dockerfile
       platforms: linux/amd64
       registry: gitea.marrinus.trade
-      password: Marrinus1
-      username: thelonesomeprogrammer
+      username:
+        from_secret: gittea_user
+      password:
+        from_secret: gittea_pass
