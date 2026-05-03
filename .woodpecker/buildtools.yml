@@ -6,6 +6,7 @@ steps:
       dockerfile: Dockerfile
       platforms: linux/amd64
       registry: gitea.marrinus.trade
+      custom_dns: "8.8.8.8,1.1.1.1"
       username:
         from_secret: gittea_user
       password:
