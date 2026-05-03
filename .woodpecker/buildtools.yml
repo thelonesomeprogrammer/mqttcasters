@@ -6,5 +6,5 @@ steps:
       dockerfile: Dockerfile
       platforms: linux/amd64
       registry: gitea.marrinus.trade
-      password: $${gittea_pass}
-      username: $${gittea_user}
+      password: ${gittea_pass}
+      username: ${gittea_user}
