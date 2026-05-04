@@ -13,7 +13,7 @@ fn test_sanitisation() {
 async fn test_discovery_stream_setup() -> anyhow::Result<()> {
     let (tx, mut rx) = mpsc::channel(10);
     
-    start_discovery(tx)?;
+    start_discovery(tx, mqttcasters::config::DiscoveryBackend::MdnsSd)?;
     
     // We expect discovery to be active and potentially find devices if they exist on the network.
     // If it's a CI environment with no devices, it will timeout, which is also fine for this test

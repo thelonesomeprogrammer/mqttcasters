@@ -7,7 +7,7 @@ use mqttcasters::{discovery, types::DeviceCommand};
 #[ignore] // Requires local network access
 async fn test_milestone_1_scanner() -> anyhow::Result<()> {
     let (tx, mut rx) = tokio::sync::mpsc::channel(10);
-    discovery::start_discovery(tx)?;
+    discovery::start_discovery(tx, mqttcasters::config::DiscoveryBackend::MdnsSd)?;
 
     println!("Watching for devices for 2 seconds...");
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(2);
@@ -25,6 +25,49 @@ async fn test_milestone_1_scanner() -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+/// Milestone 1 (Zeroconf): The Scanner
+/// This test verifies that mDNS discovery works using the zeroconf backend.
+#[tokio::test]
+#[ignore] // Requires local network access and zeroconf feature
+#[cfg(feature = "zeroconf")]
+async fn test_milestone_1_zeroconf_scanner() -> anyhow::Result<()> {
+    let (tx, mut rx) = tokio::sync::mpsc::channel(10);
+    discovery::start_discovery(tx, mqttcasters::config::DiscoveryBackend::Zeroconf)?;
+
+    println!("Watching for devices (zeroconf) for 10 seconds...");
+    let timeout = std::time::Duration::from_secs(10);
+    let start = tokio::time::Instant::now();
+
+    loop {
+        let elapsed = start.elapsed();
+        if elapsed >= timeout {
+            break;
+        }
+
+        let remaining = timeout - elapsed;
+        match tokio::time::timeout(remaining, rx.recv()).await {
+            Ok(Some(event)) => {
+                println!("Zeroconf Event: {:?}", event);
+                if let mqttcasters::types::DiscoveryEvent::Found(_) = event {
+                    println!("Found a device! Test passing.");
+                    return Ok(());
+                }
+            }
+            Ok(None) => {
+                println!("Discovery channel closed unexpectedly");
+                break;
+            }
+            Err(_) => {
+                // This is the timeout for this specific recv() call, 
+                // but since it's the 'remaining' time, it's also the total timeout.
+                break;
+            }
+        }
+    }
+    
+    anyhow::bail!("No devices found via zeroconf in 10 seconds");
 }
 
 /// Milestone 2: The Controller

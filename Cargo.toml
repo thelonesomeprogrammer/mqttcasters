@@ -16,7 +16,8 @@ path = "src/main.rs"
 [dependencies]
 cast-sender = "0.3.0"
 rumqttc = { version = "0.25", features = ["url"] }
-mdns-sd = "0.19"
+mdns-sd = { version = "0.19", optional = true }
+zeroconf = { version = "0.18.0", optional = true }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -25,3 +26,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1"
 clap = { version = "4.6.1", features = ["derive", "env"] }
 thiserror = "2"
+
+[features]
+default = ["mdns-sd"]
+mdns-sd = ["dep:mdns-sd"]
+zeroconf = ["dep:zeroconf"]

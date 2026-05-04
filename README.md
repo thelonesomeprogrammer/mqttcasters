@@ -74,9 +74,22 @@ All configuration is through environment variables:
 |---------------------|-----------------------------|-----------------------------------------------|
 | `MQTT_URL`          | `mqtt://localhost:1883`     | MQTT broker URL                               |
 | `MQTT_BASE_TOPIC`   | `mqttcasters`               | MQTT topic prefix                             |
+| `DISCOVERY_BACKEND` | `mdns-sd`                   | mDNS backend (`mdns-sd` or `zeroconf`)        |
 | `DISCOVERY_TIMEOUT` | `10`                        | mDNS discovery window in seconds at startup   |
 | `RECONNECT_DELAY`   | `15`                        | Seconds between reconnection attempts         |
 | `RUST_LOG`          | `info`                      | Log level (`trace`, `debug`, `info`, `warn`)  |
+
+---
+
+## mDNS Discovery Backends
+
+`mqttcasters` supports two mDNS discovery backends:
+
+- **`mdns-sd` (default)**: A pure Rust implementation. Works out of the box without system dependencies.
+- **`zeroconf`**: Uses system mDNS daemons (Avahi on Linux, Bonjour on macOS/Windows). 
+  - Required for reliable discovery when running in Docker with host mDNS integration.
+  - Requires `libavahi-client-dev` (Linux) or Bonjour SDK (Windows) at build time.
+  - To use, enable the `zeroconf` feature during build and set `DISCOVERY_BACKEND=zeroconf`.
 
 ---
 
@@ -87,24 +100,41 @@ For detailed instructions on running a local MQTT broker with Docker and using C
 ## Building & Running
 
 ```bash
-# Build (release)
+# Build with default (mdns-sd)
 cargo build --release
 
-# Run
-MQTT_URL=mqtt://192.168.1.10:1883 ./target/release/mqttcasters
+# Build with zeroconf support
+cargo build --release --features zeroconf
+
+# Run with zeroconf backend
+DISCOVERY_BACKEND=zeroconf MQTT_URL=mqtt://192.168.1.10:1883 ./target/release/mqttcasters
 ```
 
-### Docker (example)
+### Docker with Avahi (example)
+
+To use Avahi inside Docker, you must link against `libavahi-client` and mount the Avahi socket:
 
 ```dockerfile
-FROM rust:1.94 AS builder
+# Build stage (Debian-based for easier avahi-client linking)
+FROM rust:1.81-bookworm AS builder
+RUN apt-get update && apt-get install -y libavahi-client-dev
 WORKDIR /app
 COPY . .
-RUN cargo build --release
+RUN cargo build --release --features zeroconf
 
+# Run stage
 FROM debian:bookworm-slim
-COPY --from=builder /app/target/release/chromecast2mqtt /usr/local/bin/
-CMD ["chromecast2mqtt"]
+RUN apt-get update && apt-get install -y libavahi-client3 && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /app/target/release/mqttcasters /usr/local/bin/
+CMD ["mqttcasters"]
+```
+
+Run with:
+```bash
+docker run -d \
+  -e DISCOVERY_BACKEND=zeroconf \
+  -v /var/run/avahi-daemon/socket:/var/run/avahi-daemon/socket \
+  mqttcasters
 ```
 
 ---

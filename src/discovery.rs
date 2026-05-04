@@ -1,17 +1,39 @@
-use mdns_sd::{ServiceDaemon, ServiceEvent};
-use tracing::{debug, info, warn};
-
+use tracing::{debug, info, warn, error};
 use crate::types::DiscoveredDevice;
+use crate::config::DiscoveryBackend;
 
 const CHROMECAST_SERVICE_TYPE: &str = "_googlecast._tcp.local.";
 
-/// Start a background mDNS discovery task.
-pub fn start_discovery(tx: tokio::sync::mpsc::Sender<crate::types::DiscoveryEvent>) -> anyhow::Result<()> {
+/// Start a background mDNS discovery task using the configured backend.
+pub fn start_discovery(
+    tx: tokio::sync::mpsc::Sender<crate::types::DiscoveryEvent>,
+    backend: DiscoveryBackend,
+) -> anyhow::Result<()> {
+    match backend {
+        DiscoveryBackend::MdnsSd => {
+            #[cfg(feature = "mdns-sd")]
+            return start_mdns_sd(tx);
+            #[cfg(not(feature = "mdns-sd"))]
+            anyhow::bail!("mdns-sd backend selected but feature is not enabled");
+        }
+        DiscoveryBackend::Zeroconf => {
+            #[cfg(feature = "zeroconf")]
+            return start_zeroconf(tx);
+            #[cfg(not(feature = "zeroconf"))]
+            anyhow::bail!("zeroconf backend selected but feature is not enabled");
+        }
+    }
+}
+
+#[cfg(feature = "mdns-sd")]
+fn start_mdns_sd(tx: tokio::sync::mpsc::Sender<crate::types::DiscoveryEvent>) -> anyhow::Result<()> {
+    use mdns_sd::{ServiceDaemon, ServiceEvent};
+
     let mdns = ServiceDaemon::new()?;
     let receiver = mdns.browse(CHROMECAST_SERVICE_TYPE)?;
 
     tokio::task::spawn_blocking(move || {
-        info!("Continuous mDNS discovery started for '{}'", CHROMECAST_SERVICE_TYPE);
+        info!("Continuous mDNS discovery (mdns-sd) started for '{}'", CHROMECAST_SERVICE_TYPE);
 
         loop {
             match receiver.recv() {
@@ -78,6 +100,77 @@ pub fn start_discovery(tx: tokio::sync::mpsc::Sender<crate::types::DiscoveryEven
             }
         }
         let _ = mdns.shutdown();
+    });
+
+    Ok(())
+}
+
+#[cfg(feature = "zeroconf")]
+fn start_zeroconf(tx: tokio::sync::mpsc::Sender<crate::types::DiscoveryEvent>) -> anyhow::Result<()> {
+    use zeroconf::prelude::*;
+    use zeroconf::{MdnsBrowser, ServiceType, BrowserEvent};
+    use std::time::Duration;
+
+    let service_type = ServiceType::new("googlecast", "tcp")?;
+    let mut browser = MdnsBrowser::new(service_type);
+
+    let tx_callback = tx.clone();
+    browser.set_service_callback(Box::new(move |result, _context| {
+        match result {
+            Ok(event) => match event {
+                BrowserEvent::Add(service) => {
+                    let friendly_name = service.txt()
+                        .as_ref()
+                        .and_then(|t| t.get("fn"))
+                        .unwrap_or_else(|| service.name().to_string());
+
+                    let topic_name = sanitise_topic_name(&friendly_name);
+                    let address = service.address().to_string();
+                    let port = *service.port();
+
+                    debug!(
+                        "mDNS (zeroconf) Resolved: '{}' at {}:{}",
+                        friendly_name, address, port
+                    );
+
+                    let event = crate::types::DiscoveryEvent::Found(DiscoveredDevice {
+                        topic_name,
+                        friendly_name,
+                        address,
+                        port,
+                    });
+
+                    let _ = tx_callback.blocking_send(event);
+                }
+                BrowserEvent::Remove(removal) => {
+                    let fullname = format!("{}.{}.", removal.name(), removal.kind());
+                    debug!("mDNS (zeroconf) removal: {}", fullname);
+                    let _ = tx_callback.blocking_send(crate::types::DiscoveryEvent::Removed(fullname));
+                }
+            },
+            Err(e) => warn!("Zeroconf discovery error: {}", e),
+        }
+    }));
+
+    tokio::task::spawn_blocking(move || {
+        info!("Continuous mDNS discovery (zeroconf) started");
+        let event_loop = match browser.browse_services() {
+            Ok(el) => el,
+            Err(e) => {
+                error!("Failed to start Zeroconf browser: {}. Ensure Avahi (Linux) or Bonjour (Windows) is running.", e);
+                return;
+            }
+        };
+
+        loop {
+            if let Err(e) = event_loop.poll(Duration::from_secs(1)) {
+                warn!("Zeroconf poll error: {}", e);
+                break;
+            }
+            if tx.is_closed() {
+                break;
+            }
+        }
     });
 
     Ok(())

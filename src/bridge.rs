@@ -22,7 +22,7 @@ pub async fn run(cfg: Config) -> anyhow::Result<()> {
     // ------------------------------------------------------------------
     // 2. Start continuous discovery.
     // ------------------------------------------------------------------
-    crate::discovery::start_discovery(discovery_tx)?;
+    crate::discovery::start_discovery(discovery_tx, cfg.discovery_backend)?;
 
     // ------------------------------------------------------------------
     // 3. Create the MQTT client.

@@ -1,4 +1,12 @@
-use clap::Parser;
+use clap::{Parser, ValueEnum};
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum DiscoveryBackend {
+    /// Pure Rust mDNS implementation
+    MdnsSd,
+    /// System mDNS implementation (e.g., Avahi/Bonjour)
+    Zeroconf,
+}
 
 /// Configuration loaded from environment variables.
 #[derive(Parser, Debug, Clone)]
@@ -19,6 +27,10 @@ pub struct Config {
     /// Seconds between Chromecast reconnection attempts (default: `15`)
     #[arg(long, env = "RECONNECT_DELAY", default_value = "15")]
     pub reconnect_delay_secs: u64,
+
+    /// mDNS discovery backend to use
+    #[arg(long, env = "DISCOVERY_BACKEND", default_value = "mdns-sd")]
+    pub discovery_backend: DiscoveryBackend,
 }
 
 impl Config {
