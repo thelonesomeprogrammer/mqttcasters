@@ -1,0 +1,53 @@
+# Dockerfile for mqttcasters with 'zeroconf' (Avahi) support.
+#
+# This Dockerfile builds the application with the 'zeroconf' feature enabled,
+# which allows it to use the host's Avahi daemon for mDNS discovery.
+#
+# Usage:
+#   docker build -t mqttcasters-zeroconf -f Dockerfile.zeroconf .
+#   docker run --rm --network host \
+#     -v /var/run/avahi-daemon/socket:/var/run/avahi-daemon/socket \
+#     -e MQTT_URL=mqtt://your-broker:1883 \
+#     mqttcasters-zeroconf
+
+# Stage 1: Build
+FROM rust:1-slim-bookworm AS builder
+
+# Install build dependencies
+# - pkg-config & libavahi-client-dev: Required for 'zeroconf' feature
+# - protobuf-compiler: Required for 'cast-sender' dependency
+# - libssl-dev: Required for 'rumqttc'/'openssl' dependency
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libavahi-client-dev \
+    protobuf-compiler \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY . .
+
+# Build with the 'zeroconf' feature enabled
+RUN cargo build --release --features zeroconf
+
+# Stage 2: Run
+FROM debian:bookworm-slim
+
+# Install runtime dependencies
+# - libavahi-client3: Required to communicate with the host's Avahi daemon
+# - libssl3: Required for TLS support
+# - ca-certificates: Required for secure MQTT/HTTPS connections
+RUN apt-get update && apt-get install -y \
+    libavahi-client3 \
+    libssl3 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the binary from the builder stage
+COPY --from=builder /app/target/release/mqttcasters /mqttcasters
+
+# Default to the zeroconf discovery backend
+ENV DISCOVERY_BACKEND=zeroconf
+
+# Run the application
+ENTRYPOINT ["/mqttcasters"]

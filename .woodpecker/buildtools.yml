@@ -11,3 +11,17 @@ steps:
         from_secret: gittea_user
       password:
         from_secret: gittea_pass
+
+  publish-zeroconf:
+    image: woodpeckerci/plugin-docker-buildx
+    settings:
+      repo: gitea.marrinus.trade/thelonesomeprogrammer/mqttcasters
+      dockerfile: Dockerfile.zeroconf
+      tags: zeroconf
+      platforms: linux/amd64
+      registry: gitea.marrinus.trade
+      custom_dns: "8.8.8.8,1.1.1.1"
+      username:
+        from_secret: gittea_user
+      password:
+        from_secret: gittea_pass

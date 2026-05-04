@@ -110,32 +110,23 @@ cargo build --release --features zeroconf
 DISCOVERY_BACKEND=zeroconf MQTT_URL=mqtt://192.168.1.10:1883 ./target/release/mqttcasters
 ```
 
-### Docker with Avahi (example)
+### Docker with Zeroconf (Avahi)
 
-To use Avahi inside Docker, you must link against `libavahi-client` and mount the Avahi socket:
+To use Avahi discovery inside Docker, use the provided `Dockerfile.zeroconf`. This image is built with the `zeroconf` feature enabled and includes the necessary system libraries.
 
-```dockerfile
-# Build stage (Debian-based for easier avahi-client linking)
-FROM rust:1.81-bookworm AS builder
-RUN apt-get update && apt-get install -y libavahi-client-dev
-WORKDIR /app
-COPY . .
-RUN cargo build --release --features zeroconf
-
-# Run stage
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y libavahi-client3 && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app/target/release/mqttcasters /usr/local/bin/
-CMD ["mqttcasters"]
+Build with:
+```bash
+docker build -t mqttcasters:zeroconf -f Dockerfile.zeroconf .
 ```
 
-Run with:
+Run with the Avahi socket mounted and host networking:
 ```bash
 docker run -d \
-  -e DISCOVERY_BACKEND=zeroconf \
+  --network host \
   -v /var/run/avahi-daemon/socket:/var/run/avahi-daemon/socket \
-  mqttcasters
+  mqttcasters:zeroconf
 ```
+
 
 ---
 
