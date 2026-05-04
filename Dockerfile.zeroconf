@@ -17,11 +17,14 @@ FROM rust:1-slim-bookworm AS builder
 # - pkg-config & libavahi-client-dev: Required for 'zeroconf' feature
 # - protobuf-compiler: Required for 'cast-sender' dependency
 # - libssl-dev: Required for 'rumqttc'/'openssl' dependency
+# - clang & libclang-dev: Required for 'bindgen' (used by 'zeroconf' crate)
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libavahi-client-dev \
     protobuf-compiler \
     libssl-dev \
+    clang \
+    libclang-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
